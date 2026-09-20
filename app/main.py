@@ -5,7 +5,7 @@ from fastapi import FastAPI
 
 from app.core.config import settings
 from app.core.llm import llm
-from app.graph.runtime import close_graph, init_graph
+from app.graph.runtime import close_runtime, init_runtime
 from app.routers import brief, health
 
 
@@ -15,11 +15,11 @@ async def lifespan(app: FastAPI):
     db_dir = os.path.dirname(settings.database_path) or "."
     os.makedirs(db_dir, exist_ok=True)
 
-    # 2. Compile the graph with the checkpointer attached
-    await init_graph(settings.database_path)
-    print(f"Graph compiled; checkpointer at {settings.database_path}")
+    # 2. Compile the graph, open both DB connections, create the jobs table
+    await init_runtime(settings.database_path)
+    print(f"Runtime ready; DB at {settings.database_path}")
 
-    # 3. Warm up the LLM (small models take a few seconds on first call)
+    # 3. Warm up the LLM
     try:
         await llm.ainvoke("hello")
         print("LLM warmup complete.")
@@ -28,14 +28,14 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    await close_graph()
-    print("SQLite checkpointer closed.")
+    await close_runtime()
+    print("Runtime closed.")
 
 
 app = FastAPI(
     title="Research Brief API",
-    version="0.1.0",
-    description="LangGraph multi-agent research brief generator",
+    version="0.2.0",
+    description="LangGraph multi-agent research brief generator (async job pattern)",
     lifespan=lifespan,
 )
 

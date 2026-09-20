@@ -8,9 +8,23 @@ class BriefRequest(BaseModel):
 
 
 class ResumeRequest(BaseModel):
-    """Human decision when the graph is paused at the review node."""
     action: str = Field(..., description="approve | reject")
     note: Optional[str] = Field(None, max_length=500)
+
+
+class JobAccepted(BaseModel):
+    run_id: str
+    status: str  # always "pending" for a fresh submission
+    message: str = "Job accepted. Poll /research/brief/{run_id}/status."
+
+
+class JobStatusResponse(BaseModel):
+    run_id: str
+    topic: Optional[str] = None
+    status: str
+    error: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
 
 class BriefStateModel(BaseModel):
@@ -29,6 +43,7 @@ class BriefStateModel(BaseModel):
 
 class BriefResponse(BaseModel):
     run_id: str
-    status: str  # "completed" | "awaiting_review"
+    status: str  # awaiting_review | completed | failed
     state: BriefStateModel
     interrupt: Optional[dict] = None
+    error: Optional[str] = None
