@@ -12,9 +12,9 @@ doesn't change.
 """
 from app.graph.state import BriefState
 
-
-# The order matters: it defines the canonical pipeline.
-AGENT_ORDER = ["wikipedia", "news"]
+# The canonical pipeline order. The supervisor walks this list and
+# dispatches to whichever agent hasn't run yet.
+AGENT_ORDER = ["wikipedia", "news", "fact_check", "summarize"]
 
 
 async def supervisor_node(state: BriefState) -> dict:
@@ -29,9 +29,10 @@ async def supervisor_node(state: BriefState) -> dict:
                 ],
             }
 
+    # All agents done → hand off to human review
     return {
-        "next_action": "FINISH",
+        "next_action": "review",
         "trace": state.get("trace", []) + [
-            {"node": "supervisor", "next": "FINISH", "completed": list(completed)}
+            {"node": "supervisor", "next": "review", "completed": list(completed)}
         ],
     }
