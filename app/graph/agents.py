@@ -9,6 +9,7 @@ Every agent follows the same contract:
 import asyncio
 from urllib.parse import quote
 from langgraph.types import interrupt
+import os
 
 import feedparser
 import httpx
@@ -17,7 +18,7 @@ from app.core.config import settings
 from app.graph.state import BriefState
 from app.core.llm import llm
 
-
+_TESTING = os.getenv("TESTING") == "1"
 # ---------------------------------------------------------------- Wikipedia
 WIKI_HEADERS = {
     "User-Agent": "LangGraphMultiAgent/1.0 (https://github.com/Rubick666/langgraph-multi-agent)",
@@ -27,6 +28,14 @@ WIKI_HEADERS = {
 
 
 async def wikipedia_agent(state: BriefState) -> dict:
+    if _TESTING:
+        return {
+            "wikipedia_summary": "Test summary about the topic.",
+            "wikipedia_url": "https://en.wikipedia.org/wiki/Test",
+            "completed": state.get("completed", []) + ["wikipedia"],
+            "trace": state.get("trace", []) + [{"node": "wikipedia", "status": "ok", "chars": 32}],
+        }    
+
     topic = state.get("topic", "").strip()
     url = f"{settings.wikipedia_api}/page/summary/{quote(topic, safe='')}"
 
@@ -63,6 +72,16 @@ async def wikipedia_agent(state: BriefState) -> dict:
 
 # ---------------------------------------------------------------- News (RSS)
 async def news_agent(state: BriefState) -> dict:
+    if _TESTING:
+        return {
+            "news_headlines": [
+                {"title": "Test headline 1", "link": "https://news.example/1", "published": "2026-01-01"},
+                {"title": "Test headline 2", "link": "https://news.example/2", "published": "2026-01-02"},
+            ],
+            "completed": state.get("completed", []) + ["news"],
+            "trace": state.get("trace", []) + [{"node": "news", "status": "ok", "count": 2}],
+        }
+
     topic = state.get("topic", "").strip()
 
     try:
@@ -108,6 +127,15 @@ async def fact_check_agent(state: BriefState) -> dict:
     Uses a strict pipe-separated format so even a small model can produce
     parseable output without JSON-mode prompting.
     """
+    if _TESTING:
+        return {
+            "fact_check_notes": [
+                {"claim": "Test claim", "verdict": "SUPPORT"}
+            ],
+            "completed": state.get("completed", []) + ["fact_check"],
+            "trace": state.get("trace", []) + [{"node": "fact_check", "status": "ok", "claims": 1}],
+        }
+
     wiki = state.get("wikipedia_summary", "")
     headlines = state.get("news_headlines", [])
     news_text = "\n".join(f"- {h['title']}" for h in headlines) or "(no news available)"
@@ -166,6 +194,13 @@ async def fact_check_agent(state: BriefState) -> dict:
 # ------------------------------------------------------------- Summarizer
 async def summarize_agent(state: BriefState) -> dict:
     """Compose the final draft brief from all collected material."""
+    if _TESTING:
+        return {
+            "draft_brief": "Test brief: this is the drafted research brief for the test run.",
+            "completed": state.get("completed", []) + ["summarize"],
+            "trace": state.get("trace", []) + [{"node": "summarize", "status": "ok", "chars": 62}],
+        }
+
     wiki = state.get("wikipedia_summary", "")
     headlines = state.get("news_headlines", [])
     notes = state.get("fact_check_notes", [])
